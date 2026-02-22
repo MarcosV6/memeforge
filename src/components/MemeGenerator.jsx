@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { generateMeme, buildMemeUrl } from '../lib/gemini'
+import { useState, useRef } from 'react'
+import { generateMeme, buildMemeCanvas } from '../lib/gemini'
 import './MemeGenerator.css'
 
 const SUGGESTIONS = [
@@ -10,12 +10,13 @@ const SUGGESTIONS = [
 
 export default function MemeGenerator() {
   const [topic, setTopic] = useState('')
-  const [memeUrl, setMemeUrl] = useState(null)
+  const [memeDataUrl, setMemeDataUrl] = useState(null)
   const [explanation, setExplanation] = useState('')
   const [templateName, setTemplateName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [history, setHistory] = useState([])
+  const canvasRef = useRef(null)
 
   const handleGenerate = async (inputTopic) => {
     const t = (inputTopic || topic).trim()
@@ -23,17 +24,17 @@ export default function MemeGenerator() {
 
     setLoading(true)
     setError(null)
-    setMemeUrl(null)
+    setMemeDataUrl(null)
     setExplanation('')
 
     try {
       const { template, texts, explanation: exp } = await generateMeme(t)
-      const url = await buildMemeUrl(template, texts)
+      const dataUrl = await buildMemeCanvas(template, texts, canvasRef.current)
 
-      setMemeUrl(url)
+      setMemeDataUrl(dataUrl)
       setExplanation(exp)
       setTemplateName(template.name)
-      setHistory(prev => [{ url, topic: t, template: template.name }, ...prev.slice(0, 5)])
+      setHistory(prev => [{ url: dataUrl, topic: t, template: template.name }, ...prev.slice(0, 5)])
     } catch (err) {
       console.error('MemeForge error:', err)
       setError(`Something went wrong: ${err.message || 'Try a different topic!'}`)
@@ -47,17 +48,19 @@ export default function MemeGenerator() {
     handleGenerate(s)
   }
 
-  const handleDownload = async () => {
-    if (!memeUrl) return
+  const handleDownload = () => {
+    if (!memeDataUrl) return
     const a = document.createElement('a')
-    a.href = memeUrl
+    a.href = memeDataUrl
     a.download = `memeforge-${Date.now()}.jpg`
-    a.target = '_blank'
     a.click()
   }
 
   return (
     <div className="generator">
+      {/* Hidden canvas for meme rendering */}
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
+
       {/* Input Section */}
       <div className="input-card">
         <label className="input-label">What's the meme about?</label>
@@ -127,7 +130,7 @@ export default function MemeGenerator() {
       )}
 
       {/* Result */}
-      {memeUrl && !loading && (
+      {memeDataUrl && !loading && (
         <div className="result-card">
           <div className="result-header">
             <span className="result-badge">✨ Fresh Meme</span>
@@ -136,10 +139,9 @@ export default function MemeGenerator() {
 
           <div className="meme-container">
             <img
-              src={memeUrl}
+              src={memeDataUrl}
               alt="Generated meme"
               className="meme-image"
-              loading="lazy"
             />
           </div>
 
@@ -157,14 +159,6 @@ export default function MemeGenerator() {
             <button className="action-btn secondary" onClick={handleDownload}>
               ⬇️ Download
             </button>
-            <a
-              href={memeUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="action-btn secondary"
-            >
-              🔗 Open Full Size
-            </a>
           </div>
         </div>
       )}
@@ -176,7 +170,7 @@ export default function MemeGenerator() {
           <div className="history-grid">
             {history.slice(1).map((item, i) => (
               <div key={i} className="history-item" onClick={() => {
-                setMemeUrl(item.url)
+                setMemeDataUrl(item.url)
                 setTemplateName(item.template)
                 setTopic(item.topic)
                 setExplanation('')
