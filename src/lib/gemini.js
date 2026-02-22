@@ -26,7 +26,7 @@ const MEME_TEMPLATES = [
 ]
 
 export async function generateMeme(topic) {
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' })
 
   const templateList = MEME_TEMPLATES.map(
     (t, i) => `${i}: "${t.name}" (${t.lines} text box${t.lines > 1 ? 'es' : ''})`

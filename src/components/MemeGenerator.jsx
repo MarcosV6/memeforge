@@ -35,8 +35,8 @@ export default function MemeGenerator() {
       setTemplateName(template.name)
       setHistory(prev => [{ url, topic: t, template: template.name }, ...prev.slice(0, 5)])
     } catch (err) {
-      console.error(err)
-      setError('Something went wrong. Try a different topic!')
+      console.error('MemeForge error:', err)
+      setError(`Something went wrong: ${err.message || 'Try a different topic!'}`)
     } finally {
       setLoading(false)
     }
